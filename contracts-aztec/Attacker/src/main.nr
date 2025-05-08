@@ -10,7 +10,7 @@ pub contract Attacker {
     // Import the storage attribute macro
     use dep::aztec::macros::storage::storage;
     // Import prelude types for address & storage map
-    use dep::aztec::prelude::{AztecAddress, Map, PublicMutable};
+    use dep::aztec::prelude::{AztecAddress, PublicMutable};
 
     #[storage]
     struct Storage<Context> {
@@ -37,7 +37,7 @@ pub contract Attacker {
 
         // Invoke the vulnerable contract's exploit entrypoint
         let vulnerable = BasicVulnerable::at(storage.vulnerable_addr.read());
-        let (exploit, ) = vulnerable.exploit(true);
+        let exploit = vulnerable.exploit(true).call(&mut context);
 
         // Check if the exploit was successful
         assert(exploit == true, "Exploit failed");

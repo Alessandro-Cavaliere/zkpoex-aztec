@@ -3,7 +3,7 @@ use dep::aztec::macros::aztec;
 #[aztec]
 pub contract BasicVulnerable {
     // Import the public entrypoint decorator
-    use dep::aztec::macros::functions::{public};
+    use dep::aztec::macros::functions::{public, view};
     // Import the storage attribute macro
     use dep::aztec::macros::storage::storage;
     // Import prelude types for address & storage map
@@ -17,7 +17,7 @@ pub contract BasicVulnerable {
 
     // Exploit function: drains caller's balance to zero address
     #[public]
-    fn exploit(exploit: bool) {
+    fn exploit(exploit: bool) -> bool {
         if exploit {
             // Get the message sender
             let sender = context.msg_sender();
@@ -32,6 +32,18 @@ pub contract BasicVulnerable {
             let existing = storage.balances.at(zero_addr).read();
             let new_zero_bal = existing + bal;
             storage.balances.at(zero_addr).write(new_zero_bal);
+
+            // Return true to indicate the exploit was successful
+            true
+        } else {
+            false 
         }
     }
+
+    #[public]
+    #[view]
+    fn balance_of(owner: AztecAddress) -> u128 {
+        storage.balances.at(owner).read()
+    }
+
 }

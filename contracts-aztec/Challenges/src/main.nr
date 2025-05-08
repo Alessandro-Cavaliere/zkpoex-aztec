@@ -4,8 +4,10 @@ use dep::aztec::macros::aztec;
 pub contract Challenge {
     // Import the BasicVulnerable contract
     use dep::basic_vulnerable::BasicVulnerable;
+    // Import the Attacker contract
+    use dep::attacker::Attacker;
     // Import the public entrypoint decorator
-    use dep::aztec::macros::functions::{initializer, public, utility};
+    use dep::aztec::macros::functions::{initializer, public};
     // Import the storage attribute macro
     use dep::aztec::macros::storage::storage;
     // Import prelude types for address & storage map
@@ -13,56 +15,53 @@ pub contract Challenge {
 
     #[storage]
     struct Storage<Context> {
+        // Flag to indicate if the exploit has been executed
         exploit_executed: PublicMutable<bool, Context>,
-        pre_exploit_balance: PublicMutable<Field, Context>,
-        /// Now holds the target vulnerable_contract address
+        // The initial balance of the vulnerable contract
+        pre_exploit_balance: PublicMutable<u128, Context>,
+        /// The address of the vulnerable contract
         vulnerable_contract: PublicMutable<AztecAddress, Context>,
     }
 
     /// Constructor now takes the vulnerable_contract address
     #[public]
     #[initializer]
-    fn constructor(vault_addr: AztecAddress) {
+    fn constructor(attacker_addr: AztecAddress, vulnerable_addr: AztecAddress, pre_exploit_balance: u128) {
         // Initialize the storage for exploit executed
         storage.exploit_executed.write(false);
         // Set the initial balance to 1000 wei
-        storage.pre_exploit_balance.write(Field::from(1000));
+        storage.pre_exploit_balance.write(pre_exploit_balance);
         // Store the vulnerable contract address
-        storage.vulnerable_contract.write(vault_addr);
+        storage.vulnerable_contract.write(vulnerable_addr);
+        // Store the attacker contract address
+        storage.vulnerable_contract.write(attacker_addr);
     }
 
     #[public]
     fn entry_point() {
         let vulnerable_contract = storage.vulnerable_contract.read();
+        let attacker_contract = storage.vulnerable_contract.read();
 
         // Pre-exploit check
-        let vulnerable_contract_balance_before = context.public_balance(vulnerable_contract);
+        let vulnerable_contract_balance_before = BasicVulnerable::at(vulnerable_contract).balance_of(vulnerable_contract).view(&mut context);
         assert(vulnerable_contract_balance_before == storage.pre_exploit_balance.read());
 
         // Run the exploit on the vulnerable_contract
-        exploit();
+        exploit(attacker_contract);
 
         // Post-exploit check
-        let vault_balance_post = context.public_balance(vulnerable_contract);
+        let vault_balance_post = BasicVulnerable::at(vulnerable_contract).balance_of(vulnerable_contract).view(&mut context);
         assert(vault_balance_post == 0);
 
         storage.exploit_executed.write(true);
 
-        // Reward the exploiter
-        let exploiter = context.msg_sender();
-        let bal = context.public_balance(exploiter);
-        context.transfer_public(exploiter, vulnerable_contract, bal);
+        // TODO: Reward the exploiter
     }
 
     #[public]
-    fn exploit() {
-        BasicVulnerable::at(storage.vulnerable_contract.read())
-            .exploit(true)
-            .call(&mut context);
-    }
-
-    #[utility]
-    unconstrained fn get_pre_exploit_balance() -> Field {
-        storage.pre_exploit_balance.read()
+    fn exploit(attacker_contract: AztecAddress) {
+        // Call fallback on the attacker contract
+        let attacker = Attacker::at(attacker_contract);
+        attacker.default_handler().call(&mut context);
     }
 }
