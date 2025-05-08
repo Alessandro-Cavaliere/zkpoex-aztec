@@ -1,0 +1,6 @@
+[package]
+name = "BasicVulnerable"
+type = "contract"
+authors = [""]
+
+[dependencies]
