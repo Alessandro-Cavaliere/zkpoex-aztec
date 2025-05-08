@@ -13,3 +13,4 @@ calldata.txt
 journal.bin
 seal.bin
 receipt.bin
+contracts-aztec/*/target/**
